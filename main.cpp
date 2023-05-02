@@ -23,6 +23,7 @@ string get_next_command(const vector<string>&, int&);
 void redirection_output(const vector<string>&);
 void redirection_input(const vector<string>&);
 void handle_pipes(const vector<string>&);
+void execute_without_fork(const vector<string>& vec_arg);
 void handle_sigint(int);
 void handle_sigtstp(int);
 // int mysh_exit();
@@ -318,6 +319,24 @@ void execute(const vector<string>& vec_arg){
 
 }
 
+void execute_without_fork(const vector<string>& vec_arg){
+    
+    // Convert the vector of strings to an array of C-style strings
+    vector<char*> cargs(vec_arg.size() + 1);
+    for (long unsigned int i = 0; i < vec_arg.size(); ++i) {
+        cargs[i] = const_cast<char*>(vec_arg[i].c_str());
+    }
+    cargs[vec_arg.size()] = NULL;
+
+        // Call execvp() with the array of arguments
+    if (execvp(cargs[0], cargs.data()) == -1) {
+        perror("mysh");
+        exit(EXIT_FAILURE);
+    }
+    exit(EXIT_SUCCESS);
+}
+
+
 void execute_bg(const vector<string>& vec_arg){
     pid_t pid; 
 
@@ -383,11 +402,14 @@ void handle_pipes(const vector<string>& tokens){
     vector<string> command1;
     vector<string> command2;
 
-
+    //cout << "hiiiiiiiiiiiii";
     for(long unsigned int i = 0; i < tokens.size(); ++i) {
-        if (strcmp(tokens[i].c_str(),"|") == 0){
-            found = 1;
-        }    
+        if (found != 1){
+            if (strcmp(tokens[i].c_str(),"|") == 0){
+                found = 1;
+                continue; 
+            }   
+        } 
 
         if (found == 0){
             char cc[30000];
@@ -408,14 +430,16 @@ void handle_pipes(const vector<string>& tokens){
         dup2(fd[1], STDOUT_FILENO);
         close(fd[0]);
         close(fd[1]);
-        execute(command1);                                              ///////////////////////////////////////////////////////////////////////
+
+        execute_without_fork(command1);                                              ///////////////////////////////////////////////////////////////////////
     } else {
         int pid2 = fork();
         if (pid2 == 0) {
             dup2(fd[0], STDIN_FILENO);
             close(fd[0]);
             close(fd[1]);
-            execute(command2);                                              /////////////////////////////////////////////////////////////////////////////////
+            
+            execute_without_fork(command2);                                              /////////////////////////////////////////////////////////////////////////////////
         } else {
             close(fd[0]);
             close(fd[1]);
