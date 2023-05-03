@@ -8,13 +8,14 @@ CXX = g++
 CXXFLAGS = -Wall -Werror -g 
 
 # Αρχεία .o
-OBJS = main.o #$(MODULES)/toll_booth.o $(MODULES)/node_entrance.o $(MODULES)/road_segment.o $(MODULES)/attica_road.o
+SRCS = main.cpp modules.cpp
+OBJS = main.o modules.o
 
 # Το εκτελέσιμο πρόγραμμα
 EXEC = main
 
 # Παράμετροι για δοκιμαστική εκτέλεση
-ARGS = 10 4 5 1.0
+
 
 $(EXEC): $(OBJS)
 	$(CXX) $(OBJS) -o $(EXEC) $(CXXFLAGS)
@@ -27,3 +28,5 @@ run: $(EXEC)
 
 valgrind: $(EXEC)
 	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./$(EXEC) $(ARGS)
+
+
