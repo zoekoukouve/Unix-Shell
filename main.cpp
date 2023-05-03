@@ -1,30 +1,12 @@
-// cd path, history velakia, anakatheuthunsh <<, prints &, mt systhmatos
-// αλλαγη σειρα πιπεσ
-#include <iostream>
-#include <cstring>
-#include <vector>
-#include <string>
 #include <sstream>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/types.h>
-#include <glob.h>           
 #include <map>
-#include <fcntl.h>
-#include <csignal>
 
-using namespace std;
+#include "include/execution.h"
+#include "include/history.h"
 
 void mysh_loop();
-int main_execution(vector<string>&, vector<string>&);
-void execute(const vector<string>&);
-void add_command_to_history(vector<string>&, const string&);
-string get_previous_command(const vector<string>&, int&);
-string get_next_command(const vector<string>&, int&);
-void execute_without_fork(const vector<string>&);
 
-
-
+using namespace std;
 
 int main(int argc, char **argv) {
     mysh_loop();
