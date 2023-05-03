@@ -68,81 +68,90 @@ void mysh_loop(){
         cout << ppath;
 
         getline(cin, line);                   // read_line
-        
-        vector<string> tokens;                 // slpit line to tokens
-        char* token = strtok(&line[0], " ");
+
+        vector<string> comm;                 // slpit line to commands
+        char* token = strtok(&line[0], ";");
         while(token != NULL) {
-            tokens.push_back(token);
-            token = strtok(NULL, " ");
+            comm.push_back(token);
+            token = strtok(NULL, ";");
         }
         
-        // exit
-        if(tokens[0] == "exit"){
-            return;
-        }
-        
-        for (long unsigned int i = 0; i < tokens.size(); ++i) {  // handle aliasing
-            if(tokens[i] == "destroyalias"){
-                aliases.erase(tokens[i+1]);  
-                continue;
+        for (long unsigned int j = 0; j < comm.size(); j++){   
+            vector<string> tokens;                 // slpit line to tokens
+            string linet = comm[j];
+            char* token = strtok(&linet[0], " ");
+            while(token != NULL) {
+                tokens.push_back(token);
+                token = strtok(NULL, " ");
             }
-        }
-        
-        // find aliasing 
-        for (long unsigned int i = 0; i < tokens.size(); ++i) {
-            if (aliases.find(tokens[i]) != aliases.end()) {
-                tokens[i] = aliases[tokens[i]];
+            
+            // exit
+            if(tokens[0] == "exit"){
+                return;
             }
-        }
+            
+            for (long unsigned int i = 0; i < tokens.size(); ++i) {  // handle aliasing
+                if(tokens[i] == "destroyalias"){
+                    aliases.erase(tokens[i+1]);  
+                    continue;
+                }
+            }
+            
+            // find aliasing 
+            for (long unsigned int i = 0; i < tokens.size(); ++i) {
+                if (aliases.find(tokens[i]) != aliases.end()) {
+                    tokens[i] = aliases[tokens[i]];
+                }
+            }
 
-        for (long unsigned int i = 0; i < tokens.size(); ++i) {  // handle aliasing
-            if (tokens[i] == "createalias"){            
-                aliases[tokens[i+1]] = tokens[i+2];
+            for (long unsigned int i = 0; i < tokens.size(); ++i) {  // handle aliasing
+                if (tokens[i] == "createalias"){            
+                    aliases[tokens[i+1]] = tokens[i+2];
+                }
             }
-        }
 
 
-        int flag_history = 0;
-        // myHistorty
-        vector<string> tokenst; 
-        if(tokens[0] == "myHistory" && tokens.size() == 1){
-            for (long unsigned int i = 0; i < history.size(); ++i) {  // handle aliasing
-                cout << history[i] << endl; 
+            int flag_history = 0;
+            // myHistorty
+            vector<string> tokenst; 
+            if(tokens[0] == "myHistory" && tokens.size() == 1){
+                for (long unsigned int i = 0; i < history.size(); ++i) {  // handle aliasing
+                    cout << history[i] << endl; 
+                }
+                flag_history = 1;
+            } else if(tokens[0] == "myHistory" && tokens.size() > 1){
+                int i = stoi(tokens[1]);
+                string temp = history[i];
+                                    // slpit line to tokens
+                char* tokent = strtok(&temp[0], " ");
+                while(tokent != NULL) {
+                    tokenst.push_back(tokent);
+                    tokent = strtok(NULL, " ");
+                }
+                tokens = tokenst;
+                linet = history[i];
             }
-            flag_history = 1;
-        } else if(tokens[0] == "myHistory" && tokens.size() > 1){
-            int i = stoi(tokens[1]);
-            string temp = history[i];
-                                // slpit line to tokens
-            char* tokent = strtok(&temp[0], " ");
-            while(tokent != NULL) {
-                tokenst.push_back(tokent);
-                tokent = strtok(NULL, " ");
+            
+            if (flag_history == 0) {
+                int pid = fork();
+                if (pid == 0) {
+                // Run command loop.
+                    signal(SIGINT, SIG_DFL);
+                    signal(SIGTSTP, SIG_DFL);
+                    int ret = main_execution(tokens, ppath, aliases);   ////////////// provlhmatiko cd////////////////////////////
+                    if (ret == 1)
+                        execute(tokens);
+                    exit(EXIT_SUCCESS);
+                } else {
+                    // setted siganl handlers
+                    waitpid(pid, NULL, 0);
+                }
+            
+                // add that command to history    
+                    add_command_to_history(history, linet);
             }
-            tokens = tokenst;
-            line = history[i];
-        }
-        
-        if (flag_history == 0) {
-            int pid = fork();
-            if (pid == 0) {
-            // Run command loop.
-                signal(SIGINT, SIG_DFL);
-                signal(SIGTSTP, SIG_DFL);
-                int ret = main_execution(tokens, ppath, aliases);   ////////////// provlhmatiko cd////////////////////////////
-                if (ret == 1)
-                    execute(tokens);
-                exit(EXIT_SUCCESS);
-            } else {
-                // setted siganl handlers
-                waitpid(pid, NULL, 0);
-            }
-        
-            // add that command to history    
-                add_command_to_history(history, line);
-        }
-    } 
-    
+        } 
+    }
 }
 
 void redirection_input(vector<string>& tokens, string& ppath, map<string, string>& aliases){
