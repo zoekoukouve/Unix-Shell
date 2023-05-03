@@ -2,7 +2,7 @@
 #include "../include/execution.h"   
 
 void redirection_input(vector<string>& tokens,  vector<string>& history){
-        // open the appropriate file
+    // open the appropriate file
     long unsigned int found = 0;
     for(long unsigned int i = 0; i < tokens.size(); ++i) {
         if (tokens[i] == "<"){
@@ -86,7 +86,7 @@ void redirection_output_double(vector<string>& tokens,  vector<string>& history)
     }   
 
     // do what should be done
-    vector<string> temp; // for history
+    vector<string> temp; 
     for (long unsigned int i = 0; i < found; ++i) {           
         char cc[30000];
         strcpy(cc, tokens[i].c_str());
@@ -96,7 +96,6 @@ void redirection_output_double(vector<string>& tokens,  vector<string>& history)
     int ret = main_execution(temp, history);
     if (ret == 1)
         execute(temp);  
-    //execute(temp);                                      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // restore it to stdout 
     if (dup2(saved_stdout, STDOUT_FILENO) == -1) 
@@ -139,7 +138,7 @@ void redirection_output(vector<string>& tokens,  vector<string>& history){
     }   
 
     // do what should be done
-    vector<string> temp; // for history
+    vector<string> temp; 
     for (long unsigned int i = 0; i < found; ++i) {           
         char cc[30000];
         strcpy(cc, tokens[i].c_str());

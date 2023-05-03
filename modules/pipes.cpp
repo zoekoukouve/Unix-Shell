@@ -31,7 +31,7 @@ void handle_pipes(vector<string>& tokens,  vector<string>& history){
     pipe(fd);
 
     int pid = fork();
-    if (pid == 0) {
+    if (pid == 0) {                     // execute command1
         dup2(fd[1], STDOUT_FILENO);
         close(fd[0]);
         close(fd[1]);
@@ -41,7 +41,7 @@ void handle_pipes(vector<string>& tokens,  vector<string>& history){
             execute_without_fork(command1);
         exit(EXIT_SUCCESS);
 
-    } else {
+    } else {                            // execute command2
         int pid2 = fork();
         if (pid2 == 0) {
             dup2(fd[0], STDIN_FILENO);
