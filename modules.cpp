@@ -1,4 +1,36 @@
-void redirection_input(const vector<string>& tokens){
+#include <iostream>
+#include <cstring>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <glob.h>           
+#include <map>
+#include <fcntl.h>
+#include <csignal>
+
+using namespace std;
+
+void mysh_loop();
+int main_execution(vector<string>&, string&, map<string, string>&);
+void execute(const vector<string>&);
+void execute_bg(vector<string>&, string&, map<string, string>&);
+void handle_wildcards(const string&);
+void add_command_to_history(vector<string>&, const string&);
+string get_previous_command(const vector<string>&, int&);
+string get_next_command(const vector<string>&, int&);
+void redirection_output(vector<string>&, string&, map<string, string>&);
+void redirection_output_double(vector<string>&, string&, map<string, string>&);
+void redirection_input(vector<string>&, string&, map<string, string>&);
+void handle_pipes(vector<string>&, string&, map<string, string>& );
+void execute_without_fork(const vector<string>&);
+void handle_sigint(int);
+void handle_sigtstp(int);
+
+
+void redirection_input(vector<string>& tokens, string& ppath, map<string, string>& aliases){
          // open the appropriate file
         long unsigned int found = 0;
         for(long unsigned int i = 0; i < tokens.size(); ++i) {
@@ -37,7 +69,10 @@ void redirection_input(const vector<string>& tokens){
             strcpy(cc, tokens[i].c_str());
             temp.push_back((string)cc);;
         }
-        execute(temp);                   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        int ret = main_execution(temp, ppath, aliases);
+        if (ret == 1)
+            execute(temp);       
+        //execute(temp);                   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // restore it to stdin
         if (dup2(saved_stdout, STDIN_FILENO) == -1) {
@@ -48,7 +83,60 @@ void redirection_input(const vector<string>& tokens){
         close(file_desc);
     }
 
-void redirection_output(const vector<string>& tokens){
+void redirection_output_double(vector<string>& tokens, string& ppath, map<string, string>& aliases){
+    // opern the appropriate file
+        long unsigned int found = 0;
+        for(long unsigned int i = 0; i < tokens.size(); ++i) {
+            if (strcmp(tokens[i].c_str(),">>") == 0){
+                found = i;
+                break;
+            }          
+        }
+        char name[300];
+        strcpy(name, tokens[found + 1].c_str());            
+        
+       
+       // save the output to restore it to stdout later 
+        int file_desc = open(name, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+        if (file_desc == -1) {
+            perror("Error opening file");
+            exit(EXIT_FAILURE);
+        }
+        // redirect the output
+        int saved_stdout = dup(STDOUT_FILENO);
+        if (saved_stdout == -1) {
+            perror("Error duplicating file descriptor");
+            exit(EXIT_FAILURE);
+        }    
+        
+        // redirect the output
+        if (dup2(file_desc, STDOUT_FILENO) == -1) {
+            perror("Error redirecting output");
+            exit(EXIT_FAILURE);;
+        }   
+    
+        // do what should be done
+        vector<string> temp; // for history
+        for (long unsigned int i = 0; i < found; ++i) {           
+            char cc[30000];
+            strcpy(cc, tokens[i].c_str());
+            temp.push_back((string)cc);
+        }
+
+        int ret = main_execution(temp, ppath, aliases);
+        if (ret == 1)
+            execute(temp);  
+        //execute(temp);                                      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // restore it to stdout 
+        if (dup2(saved_stdout, STDOUT_FILENO) == -1) 
+            perror("Error restoring standard output");
+           
+        close(file_desc);
+}
+
+
+void redirection_output(vector<string>& tokens, string& ppath, map<string, string>& aliases){
         
         // opern the appropriate file
         long unsigned int found = 0;
@@ -88,7 +176,10 @@ void redirection_output(const vector<string>& tokens){
             strcpy(cc, tokens[i].c_str());
             temp.push_back((string)cc);
         }
-        execute(temp);                                      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        int ret = main_execution(temp, ppath, aliases);
+        if (ret == 1)
+            execute(temp);  
 
         // restore it to stdout 
         if (dup2(saved_stdout, STDOUT_FILENO) == -1) 
@@ -161,7 +252,24 @@ void execute(const vector<string>& vec_arg){
 
 }
 
-void execute_bg(const vector<string>& vec_arg){
+void execute_without_fork(const vector<string>& vec_arg){
+    
+    // Convert the vector of strings to an array of C-style strings
+    vector<char*> cargs(vec_arg.size() + 1);
+    for (long unsigned int i = 0; i < vec_arg.size(); ++i) {
+        cargs[i] = const_cast<char*>(vec_arg[i].c_str());
+    }
+    cargs[vec_arg.size()] = NULL;
+
+        // Call execvp() with the array of arguments
+    if (execvp(cargs[0], cargs.data()) == -1) {
+        perror("mysh");
+        exit(EXIT_FAILURE);
+    }
+    return;
+}
+
+void execute_bg(vector<string>& vec_arg, string& ppath, map<string, string>& aliases){
     pid_t pid; 
 
     pid = fork();
@@ -175,21 +283,10 @@ void execute_bg(const vector<string>& vec_arg){
 
         // Create a new session and process group for the child process.
         setsid();
-        
-        // Convert the vector of strings to an array of C-style strings
-        vector<char*> cargs(vec_arg.size() + 1);
-        for (long unsigned int i = 0; i < vec_arg.size(); ++i) {
-            cargs[i] = const_cast<char*>(vec_arg[i].c_str());
-        }
-        cargs[vec_arg.size()] = NULL;
 
-        // print pid 
-        cout << "\n" << getppid() << endl;
-        // Call execvp() with the array of arguments
-        if (execvp(cargs[0], cargs.data()) == -1) {
-            perror("mysh");
-            exit(EXIT_FAILURE);
-        }
+        int ret = main_execution(vec_arg, ppath, aliases);
+        if (ret == 1)
+            execute_without_fork(vec_arg);
         exit(EXIT_SUCCESS);
     } else{
         return; 
@@ -219,18 +316,21 @@ void handle_wildcards(const string& pattern) {
 }
 
 // pipes
-void handle_pipes(const vector<string>& tokens){
+void handle_pipes(vector<string>& tokens, string& ppath, map<string, string>& aliases){
     
     // find the two commands
     long unsigned int found = 0;    // flag to split commands
     vector<string> command1;
     vector<string> command2;
 
-
+   // cout << "hiiiiiiiiiiiii";
     for(long unsigned int i = 0; i < tokens.size(); ++i) {
-        if (strcmp(tokens[i].c_str(),"|") == 0){
-            found = 1;
-        }    
+        if (found != 1){
+            if (strcmp(tokens[i].c_str(),"|") == 0){
+                found = 1;
+                continue; 
+            }   
+        } 
 
         if (found == 0){
             char cc[30000];
@@ -251,14 +351,23 @@ void handle_pipes(const vector<string>& tokens){
         dup2(fd[1], STDOUT_FILENO);
         close(fd[0]);
         close(fd[1]);
-        execute(command1);                                              ///////////////////////////////////////////////////////////////////////
+
+        int ret = main_execution(command1, ppath, aliases);
+        if (ret == 1)
+            execute_without_fork(command1);
+        exit(EXIT_SUCCESS);
+
     } else {
         int pid2 = fork();
         if (pid2 == 0) {
             dup2(fd[0], STDIN_FILENO);
             close(fd[0]);
             close(fd[1]);
-            execute(command2);                                              /////////////////////////////////////////////////////////////////////////////////
+            
+            int ret = main_execution(command2, ppath, aliases);
+            if (ret == 1)
+                execute_without_fork(command2);     
+            exit(EXIT_SUCCESS);                                        
         } else {
             close(fd[0]);
             close(fd[1]);
@@ -270,12 +379,102 @@ void handle_pipes(const vector<string>& tokens){
 
 // handle signals
 void handle_sigint(int signal_c) {
-    cout << "Caught signal " << signal_c << ", exiting." << endl;
+    std::cout << "\nIgnoring SIGINT signal\n";
+    fflush(stdout);
     // exit(0);
 }
 
 void handle_sigtstp(int signal_z) {
-    cout << "Caught signal " << signal_z << ", pausing." << endl;
+    cout << "path >";
     // pause();
 }
 
+int main_execution(vector<string>& tokens, string& ppath, map<string, string>& aliases){
+
+
+    int flag_output = 0;
+    int flag_output_app = 0;
+    int flag_input = 0;
+    int flag_pipe = 0;
+    
+    for (long unsigned int i = 0; i < tokens.size(); ++i) {
+            if (tokens[i] == "<") {
+                flag_input = 1;
+            }
+            if (tokens[i] == ">>") {
+                flag_output_app = 1;
+            }
+            if (tokens[i] == ">") {
+                flag_output = 1;
+            }
+            if (tokens[i] == "|") {
+                flag_pipe = 1;
+            }
+            
+    }
+    
+    // backround
+    if(tokens[tokens.size()-1] == "&"){  
+        tokens.erase(tokens.end());
+        execute_bg(tokens, ppath, aliases);
+        return 0;
+    }
+    // redirection output
+    else if(flag_output == 1){
+        redirection_output(tokens, ppath, aliases);
+        return 0;
+    } 
+    // redirection output
+    else if(flag_output_app == 1){
+        cout << "fhfjafkafk" << endl;
+        redirection_output_double(tokens, ppath, aliases);
+        return 0;
+    } 
+    // redirection input
+    else if(flag_input == 1){
+        redirection_input(tokens, ppath, aliases);
+        return 0;
+    } 
+    // handle pipes
+    else if(flag_pipe == 1){
+        handle_pipes(tokens, ppath, aliases);
+        return 0;
+    } 
+    // cd
+    // else if(tokens[0] == "cd"){
+    //     if (tokens.size() == 1){
+    //             // std::filesystem::path currentPath = std::filesystem::current_path();
+    //             const char* path = "../syspro_project1";
+    //             if (chdir(path) == -1) {
+    //                 cout << "Error changing directory to " << path << endl;
+    //             }
+    //             ppath = (string)"mysh> ";
+    //     } else{
+    //             const char* path = tokens[1].c_str();
+    //             if (chdir(path) == -1) {
+    //                 cout << "Error changing directory to " << path << endl;
+    //             }
+    //             ppath = (string)"mysh> ";
+    //             ppath.append((string)path);
+    //             ppath.append((string)"$ ");
+
+    //     }
+    //     return 0;
+            
+    // } 
+    // wild characters
+    else if(tokens[0] == "ls" &&  (tokens[tokens.size()-1].find("*") != string::npos || tokens[tokens.size()-1].find("?") != string::npos)){ 
+        handle_wildcards(tokens[tokens.size()-1]);
+                return 0;
+
+    } 
+    // alaising 
+    else if (tokens[0] == "createalias" || tokens[0] == "destroyalias"){
+        // executed in the mysh_loop
+    }
+    // simple execution
+    else
+        return 1;
+
+    return 0;
+}
