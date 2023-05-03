@@ -9,22 +9,23 @@
 #include <glob.h>           // glob(), globfree()
 #include <map>
 #include <fcntl.h>
-#include <filesystem>
+#include <csignal>
 
 using namespace std;
 
 void mysh_loop();
 int main_execution(vector<string>&, string&, map<string, string>&);
 void execute(const vector<string>&);
-void execute_bg(vector<string>&, string& ppath, map<string, string>& aliases);
+void execute_bg(vector<string>&, string&, map<string, string>&);
 void handle_wildcards(const string&);
 void add_command_to_history(vector<string>&, const string&);
 string get_previous_command(const vector<string>&, int&);
 string get_next_command(const vector<string>&, int&);
-void redirection_output(vector<string>&, string& ppath, map<string, string>& aliases);
-void redirection_input(vector<string>&, string& ppath, map<string, string>& aliases);
-void handle_pipes(vector<string>&, string& ppath, map<string, string>& aliases);
-void execute_without_fork(const vector<string>& vec_arg);
+void redirection_output(vector<string>&, string&, map<string, string>&);
+void redirection_output_double(vector<string>&, string&, map<string, string>&);
+void redirection_input(vector<string>&, string&, map<string, string>&);
+void handle_pipes(vector<string>&, string&, map<string, string>& );
+void execute_without_fork(const vector<string>&);
 void handle_sigint(int);
 void handle_sigtstp(int);
 // int mysh_exit();
@@ -53,6 +54,9 @@ void mysh_loop(){
     
     string line;
 
+    signal(SIGINT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+
     int status = 1;
     map<string, string> aliases; // for aliasing
     vector<string> history; // for history
@@ -60,8 +64,6 @@ void mysh_loop(){
 
     while(status != 0){
         
-        signal(SIGINT, SIG_IGN);
-        signal(SIGTSTP, SIG_IGN);
         //printf("mysh> ");
         cout << ppath;
 
@@ -99,23 +101,46 @@ void mysh_loop(){
             }
         }
 
-        // add that command to history 
-        add_command_to_history(history, line);
-        
-        int pid = fork();
-        if (pid == 0) {
-        // Run command loop.
-            signal(SIGINT, SIG_DFL);
-            signal(SIGTSTP, SIG_DFL);
-            int ret = main_execution(tokens, ppath, aliases);   ////////////// provlhmatiko cd////////////////////////////
-            if (ret == 1)
-                execute(tokens);
-            exit(EXIT_SUCCESS);
-        } else {
-            // setted siganl handlers
-            waitpid(pid, NULL, 0);
+
+        int flag_history = 0;
+        // myHistorty
+        vector<string> tokenst; 
+        if(tokens[0] == "myHistory" && tokens.size() == 1){
+            for (long unsigned int i = 0; i < history.size(); ++i) {  // handle aliasing
+                cout << history[i] << endl; 
+            }
+            flag_history = 1;
+        } else if(tokens[0] == "myHistory" && tokens.size() > 1){
+            int i = stoi(tokens[1]);
+            string temp = history[i];
+                                // slpit line to tokens
+            char* tokent = strtok(&temp[0], " ");
+            while(tokent != NULL) {
+                tokenst.push_back(tokent);
+                tokent = strtok(NULL, " ");
+            }
+            tokens = tokenst;
+            line = history[i];
         }
-       
+        
+        if (flag_history == 0) {
+            int pid = fork();
+            if (pid == 0) {
+            // Run command loop.
+                signal(SIGINT, SIG_DFL);
+                signal(SIGTSTP, SIG_DFL);
+                int ret = main_execution(tokens, ppath, aliases);   ////////////// provlhmatiko cd////////////////////////////
+                if (ret == 1)
+                    execute(tokens);
+                exit(EXIT_SUCCESS);
+            } else {
+                // setted siganl handlers
+                waitpid(pid, NULL, 0);
+            }
+        
+            // add that command to history    
+                add_command_to_history(history, line);
+        }
     } 
     
 }
@@ -161,7 +186,7 @@ void redirection_input(vector<string>& tokens, string& ppath, map<string, string
         }
         int ret = main_execution(temp, ppath, aliases);
         if (ret == 1)
-            execute(tokens);       
+            execute(temp);       
         //execute(temp);                   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // restore it to stdin
@@ -172,6 +197,59 @@ void redirection_input(vector<string>& tokens, string& ppath, map<string, string
 
         close(file_desc);
     }
+
+void redirection_output_double(vector<string>& tokens, string& ppath, map<string, string>& aliases){
+    // opern the appropriate file
+        long unsigned int found = 0;
+        for(long unsigned int i = 0; i < tokens.size(); ++i) {
+            if (strcmp(tokens[i].c_str(),">>") == 0){
+                found = i;
+                break;
+            }          
+        }
+        char name[300];
+        strcpy(name, tokens[found + 1].c_str());            
+        
+       
+       // save the output to restore it to stdout later 
+        int file_desc = open(name, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+        if (file_desc == -1) {
+            perror("Error opening file");
+            exit(EXIT_FAILURE);
+        }
+        // redirect the output
+        int saved_stdout = dup(STDOUT_FILENO);
+        if (saved_stdout == -1) {
+            perror("Error duplicating file descriptor");
+            exit(EXIT_FAILURE);
+        }    
+        
+        // redirect the output
+        if (dup2(file_desc, STDOUT_FILENO) == -1) {
+            perror("Error redirecting output");
+            exit(EXIT_FAILURE);;
+        }   
+    
+        // do what should be done
+        vector<string> temp; // for history
+        for (long unsigned int i = 0; i < found; ++i) {           
+            char cc[30000];
+            strcpy(cc, tokens[i].c_str());
+            temp.push_back((string)cc);
+        }
+
+        int ret = main_execution(temp, ppath, aliases);
+        if (ret == 1)
+            execute(temp);  
+        //execute(temp);                                      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // restore it to stdout 
+        if (dup2(saved_stdout, STDOUT_FILENO) == -1) 
+            perror("Error restoring standard output");
+           
+        close(file_desc);
+}
+
 
 void redirection_output(vector<string>& tokens, string& ppath, map<string, string>& aliases){
         
@@ -216,8 +294,7 @@ void redirection_output(vector<string>& tokens, string& ppath, map<string, strin
 
         int ret = main_execution(temp, ppath, aliases);
         if (ret == 1)
-            execute(tokens);  
-        //execute(temp);                                      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            execute(temp);  
 
         // restore it to stdout 
         if (dup2(saved_stdout, STDOUT_FILENO) == -1) 
@@ -418,12 +495,13 @@ void handle_pipes(vector<string>& tokens, string& ppath, map<string, string>& al
 
 // handle signals
 void handle_sigint(int signal_c) {
-    cout << "Caught signal " << signal_c  << endl << "path >";
+    std::cout << "\nIgnoring SIGINT signal\n";
+    fflush(stdout);
     // exit(0);
 }
 
 void handle_sigtstp(int signal_z) {
-    cout << "Caught signal " << signal_z << endl << "path >";
+    cout << "path >";
     // pause();
 }
 
@@ -431,12 +509,16 @@ int main_execution(vector<string>& tokens, string& ppath, map<string, string>& a
 
 
     int flag_output = 0;
+    int flag_output_app = 0;
     int flag_input = 0;
     int flag_pipe = 0;
     
     for (long unsigned int i = 0; i < tokens.size(); ++i) {
             if (tokens[i] == "<") {
                 flag_input = 1;
+            }
+            if (tokens[i] == ">>") {
+                flag_output_app = 1;
             }
             if (tokens[i] == ">") {
                 flag_output = 1;
@@ -454,9 +536,15 @@ int main_execution(vector<string>& tokens, string& ppath, map<string, string>& a
         execute_bg(tokens, ppath, aliases);
         return 0;
     }
-    // redirectionoutput
+    // redirection output
     else if(flag_output == 1){
         redirection_output(tokens, ppath, aliases);
+        return 0;
+    } 
+    // redirection output
+    else if(flag_output_app == 1){
+        cout << "fhfjafkafk" << endl;
+        redirection_output_double(tokens, ppath, aliases);
         return 0;
     } 
     // redirection input
