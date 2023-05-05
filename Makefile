@@ -9,7 +9,7 @@ CXX = g++
 CXXFLAGS = -Wall -Werror -g -I$(INCLUDE)
 
 # Αρχεία .o
-SRCS = main.cpp execution.o wildcards.o redirection.o pipes.o history.o
+SRCS = main.cpp $(MODULES)/history.cpp $(MODULES)/wildcards.cpp $(MODULES)/redirection.cpp $(MODULES)/pipes.cpp $(MODULES)/execution.cpp
 OBJS = main.o $(MODULES)/history.o $(MODULES)/wildcards.o $(MODULES)/redirection.o $(MODULES)/pipes.o $(MODULES)/execution.o
 
 # Το εκτελέσιμο πρόγραμμα

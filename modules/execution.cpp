@@ -3,7 +3,7 @@
 #include "../include/wildcards.h"   
 #include "../include/execution.h"   
 
-void execute(const vector<string>& vec_arg){
+void execute(vector<string>& vec_arg){
     pid_t pid; 
     int status;
 
@@ -37,7 +37,7 @@ void execute(const vector<string>& vec_arg){
 
 }
 
-void execute_without_fork(const vector<string>& vec_arg){
+void execute_without_fork(vector<string>& vec_arg){
     
     // Convert the vector of strings to an array of C-style strings
     vector<char*> cargs(vec_arg.size() + 1);
@@ -82,20 +82,36 @@ void execute_bg(vector<string>& vec_arg,  vector<string>& history){
 int main_execution(vector<string>& tokens,  vector<string>& history){
 
     // in case that a part of a complex command that the mysh_loop send is "type myHistory i"
-    vector<string> tokenst; 
-    if(tokens[0] == "myHistory" && tokens.size() == 2){
-        long unsigned int i = stoi(tokens[1]);
-        if ((i >= 0 && i < (history.size() -1))){
-            cout << "Error in myHistory indexing" << endl;
-        }      
-        string temp = history[history.size() -1 -i];
-        char* tokent = strtok(&temp[0], " ");
-        while(tokent != NULL) {
-            tokenst.push_back(tokent);
-            tokent = strtok(NULL, " ");
-        }
-        tokens = tokenst;
-    }
+    // myHistorty i - find the i-th command of the history vector
+            string linet;
+            int flag_myHistoryI = 0;
+            if(tokens[0] == "myHistory" && tokens.size() == 2){
+                long unsigned int i = stoi(tokens[1]);
+                if ((i >= 0 && i < history.size())){
+                    linet = history[history.size() -1 -i];
+                    flag_myHistoryI = 1;
+                }          
+            }
+
+            // if myHistorty i happen, retokenize
+            if (flag_myHistoryI == 1){
+                tokens.clear();
+                string token1;
+                stringstream tempss1(linet);
+                
+                while (tempss1 >> token1){
+                    if (token1[0] == '\"'){          // treat " " substrings as one token
+                        string temp;
+                        while (tempss1 >> temp){
+                            token1 += " " + temp;
+                            if (temp.back() == '\"')
+                                break;
+                        }
+                        token1 = token1.substr(1, token1.length() - 2); // erase ""
+                    }
+                    tokens.push_back(token1);
+                }
+            }
     
     int flag_output = 0;
     int flag_output_app = 0;
@@ -147,7 +163,7 @@ int main_execution(vector<string>& tokens,  vector<string>& history){
     // myHistory
     else if (tokens[0] == "myHistory" && tokens.size() == 1){
         for (long unsigned int i = 0; i < history.size(); ++i) {  // handle aliasing
-            cout << history[i] << endl; 
+            cout << history.size() -1 -i << ". " << history[i] << endl; 
         }       
     }
     // wild characters

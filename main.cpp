@@ -1,8 +1,8 @@
 #include <sstream>
 #include <map>
 
-#include "include/execution.h"
-#include "include/history.h"
+#include "execution.h"
+#include "history.h"
 
 void mysh_loop();
 
@@ -38,7 +38,7 @@ void mysh_loop(){
             token = strtok(NULL, ";");
         }
         
-        // Execute each command command 
+        // Execute each command  
         for (long unsigned int j = 0; j < comm.size(); j++){   
             
             // Parser
@@ -68,20 +68,35 @@ void mysh_loop(){
             }
 
             // myHistorty i - find the i-th command of the history vector
-            vector<string> tokenst; 
+            int flag_myHistoryI = 0;
             if(tokens[0] == "myHistory" && tokens.size() == 2){
                 long unsigned int i = stoi(tokens[1]);
-                if (!(i >= 0 && i < (history.size() -1)))
+                if (!(i >= 0 && i < history.size())){
+                    cout << "My history error" << endl;
                     continue;
-                string temp = history[history.size() -1 -i];
-                                    // slpit line to tokens
-                char* tokent = strtok(&temp[0], " ");
-                while(tokent != NULL) {
-                    tokenst.push_back(tokent);
-                    tokent = strtok(NULL, " ");
                 }
-                tokens = tokenst;
                 linet = history[history.size() -1 -i];
+                flag_myHistoryI = 1;
+            }
+
+            // if myHistorty i happen, retokenize
+            if (flag_myHistoryI == 1){
+                tokens.clear();
+                string token1;
+                stringstream tempss1(linet);
+                
+                while (tempss1 >> token1){
+                    if (token1[0] == '\"'){          // treat " " substrings as one token
+                        string temp;
+                        while (tempss1 >> temp){
+                            token1 += " " + temp;
+                            if (temp.back() == '\"')
+                                break;
+                        }
+                        token1 = token1.substr(1, token1.length() - 2); // erase ""
+                    }
+                    tokens.push_back(token1);
+                }
             }
 
             // cd 
@@ -95,6 +110,8 @@ void mysh_loop(){
             } 
             
             // aliasing 
+            int flag_alias = 0;
+
             for (long unsigned int i = 0; i < tokens.size(); ++i) {  // handle aliasing
                 if(tokens[i] == "destroyalias"){
                     aliases.erase(tokens[i+1]);  
@@ -105,7 +122,30 @@ void mysh_loop(){
             // find aliasing 
             for (long unsigned int i = 0; i < tokens.size(); ++i) {
                 if (aliases.find(tokens[i]) != aliases.end()) {
-                    tokens[i] = aliases[tokens[i]];
+                    //tokens[i] = aliases[tokens[i]];
+                    size_t pos = linet.find(tokens[i]);
+                    linet.replace(pos, tokens[i].length(), aliases[tokens[i]]);
+                    flag_alias = 1;
+                }
+            }
+
+            // if alias found, retokenize
+            if (flag_alias == 1){
+                tokens.clear();
+                string token1;
+                stringstream tempss1(linet);
+                
+                while (tempss1 >> token1){
+                    if (token1[0] == '\"'){          // treat " " substrings as one token
+                        string temp;
+                        while (tempss1 >> temp){
+                            token1 += " " + temp;
+                            if (temp.back() == '\"')
+                                break;
+                        }
+                        token1 = token1.substr(1, token1.length() - 2); // erase ""
+                    }
+                    tokens.push_back(token1);
                 }
             }
 
