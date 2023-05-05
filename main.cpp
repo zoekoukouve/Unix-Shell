@@ -9,9 +9,16 @@ void mysh_loop();
 using namespace std;
 
 int main(int argc, char **argv) {
+    
     mysh_loop();
     return EXIT_SUCCESS;
 }
+
+
+// void handle_sigtstp(int signal_z) {
+//     cout << "Caught signal " << signal_z << ", pausing." << endl;
+//     //pause();
+// }
 
 void mysh_loop(){
     string line;
@@ -60,7 +67,7 @@ void mysh_loop(){
                 tokens.push_back(token);
             }
             
-            /////////////////////////////////////////////// Commands //////////////////////////////////////////////
+            /////////////////////////////////////////////// Commands ////////////////////////////////////////////////
 
             // exit
             if(tokens[0] == "exit"){
@@ -99,15 +106,6 @@ void mysh_loop(){
                 }
             }
 
-            // cd 
-            if(tokens[0] == "cd"){
-                string directory = tokens[1];
-                if (chdir(directory.c_str()) != 0) {
-                    cerr << "Error: " << directory << " is not a valid directory\n";
-                }
-                add_command_to_history(history, linet);    
-                continue;   
-            } 
             
             // aliasing 
             int flag_alias = 0;
@@ -155,6 +153,15 @@ void mysh_loop(){
                 }
             }
             
+            // cd 
+            if(tokens[0] == "cd"){
+                string directory = tokens[1];
+                if (chdir(directory.c_str()) != 0) {
+                    cerr << "Error: " << directory << " is not a valid directory\n";
+                }
+                add_command_to_history(history, linet);    
+                continue;   
+            } 
             
             int pid = fork();
             if (pid == 0) {
@@ -167,7 +174,7 @@ void mysh_loop(){
                 exit(EXIT_SUCCESS);
             } else {
                     // setted siganl handlers
-                waitpid(pid, NULL, 0);
+                waitpid(pid, NULL, WUNTRACED);
             }
             
                 // add that command to history 
