@@ -167,9 +167,9 @@ int main_execution(vector<string>& tokens,  vector<string>& history){
         }       
     }
     // wild characters
-    else if(tokens[0] == "ls" &&  (tokens[tokens.size()-1].find("*") != string::npos || tokens[tokens.size()-1].find("?") != string::npos)){ 
-        handle_wildcards(tokens[tokens.size()-1]);
-                return 0;
+    else if((tokens[tokens.size()-1].find("*") != string::npos || tokens[tokens.size()-1].find("?") != string::npos)){ 
+        handle_wildcards(tokens);
+        return 0;
 
     } 
     // aliasing 

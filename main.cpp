@@ -3,6 +3,8 @@
 
 #include "execution.h"
 #include "history.h"
+#include "wildcards.h"
+
 
 void mysh_loop();
 
@@ -14,11 +16,6 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
-
-// void handle_sigtstp(int signal_z) {
-//     cout << "Caught signal " << signal_z << ", pausing." << endl;
-//     //pause();
-// }
 
 void mysh_loop(){
     string line;
@@ -155,9 +152,16 @@ void mysh_loop(){
             
             // cd 
             if(tokens[0] == "cd"){
-                string directory = tokens[1];
-                if (chdir(directory.c_str()) != 0) {
-                    cerr << "Error: " << directory << " is not a valid directory\n";
+                // cd with wildcards
+                if(tokens[tokens.size()-1].find("*") != string::npos || tokens[tokens.size()-1].find("?") != string::npos){ 
+                    handle_wildcards(tokens);
+                } 
+                // simple cd 
+                else{
+                    string directory = tokens[1];
+                    if (chdir(directory.c_str()) != 0) {
+                        cerr << "Error: " << directory << " is not a valid directory\n";
+                    }
                 }
                 add_command_to_history(history, linet);    
                 continue;   
