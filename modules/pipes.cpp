@@ -27,7 +27,7 @@ void handle_pipes(vector<string>& tokens,  vector<string>& history){
         }
     }
     
-    int fd[2];
+    int fd[2]; // pipe
     pipe(fd);
 
     int pid = fork();
