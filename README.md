@@ -1,114 +1,113 @@
-# Μεταγλώττιση και εκτέλεση #
-Για την μεταγλώττιση του προγράμματος τρέχτε την εντολή: make.
-Για την μεταγλώττιση του προγράμματος τρέχτε την εντολή: ./main
+# Compile and execute #
+To compile the program run the command: make
+To compile the program, run the command: ./main
 
+# Details #
+- The symbols > , >>, <, |, & must be preceded and followed by a space to be interpreted correctly. Note that the question mark at the end of the command e.g. ./count1 &; is ignored.
+- According to the parser I have implemented, the " are ignored. 
+That is, createalias lll "ls -las" means lll = ls -las not lll = "ls -las".
+- To run a program, write ./name not name in the terminal.
+E.g. ./count1 &? ./count2 &; instead of count1&? count2&?
+- Commands like myHistory i are 0-based.
+- The cd command cannot be an intermediate command in piping, redirection or Background.
 
-# Σημεία προσοχής κατά την εκτέλεση των test #
-- Τα συμβολά > , >>, <, |, & να προηγούνται και να έπονται από κενό χαρακτήρα για να ερμηνευτούν ορθά. Να σημειωθεί ότι το ερωτηματικό στο τελός της εντολής πχ ./count1 &; δεν ενοχλεί.
-- Σύμφωνα με τον parser που έχω υλοποιήσει, τα " αγνοούνται. 
-Δηλαδή, createalias lll "ls -las" σημαίνει lll = ls -las όχι lll = "ls -las".
-- Για να εκτελεστεί ένα πρόγραμμα, γράψτε ./name όχι name στο terminal.
-πχ ./count1 &; ./count2 &; αντί για count1&;count2&;
-- Οι εντολές τύπου myHistory i είναι 0-based.
-- Η εντολή cd δεν μπορεί να είναι ενδιάμεση εντολή σε σωλήνωση, ανακατεύθυνση ή Background.
-
-# Δομή της εργασίας #
-Η εργασία απαρτίζεται από:
-- main.c που περιέχει τη βασική συνάρτηση εκτέλεσης του προγράμματος και τη mysh_loop() του υλοποιημένου κελύφους.
-- το φάκελο modules που περιέχει τις υλοποιησείς των περισσότερων λειτουργιών εργασίας.
-- το φάκελό include που περιέχει τους ορισμούς των συναρτήσεων που υλοποιούνται στο φακελό modules.
+# Structure of the work #
+The projects consists of:
+- main.c containing the main program execution function and the mysh_loop() of the implemented shell.
+- the modules folder containing the implementors of most of the functions.
+- the include folder containing the definitions of the functions implemented in the modules folder.
 
 # main() #
-Η main() καλεί τη mysh_loop(). 
+The main() function calls mysh_loop(). 
 
 # mysh_loop() #
-Η mysh_loop() διαβάζει επαναληπτικά τις εντολές του χρήστη, της ερμηνευεί και είτε τις έκτελει είτε δημιουργεί ένα αντιγραφό της τρέχουσας διεργασίας και αναθέτει την εκτέλση της εντολής στη συνάρτηση main_execution() για εκτέλεση. Η επανάληψη αυτή σταματάει όταν ο χρήστης δώσει την εντολή exit.
-Οι εντολές που εκτελούνται είναι
-- exit, ώστε να γίνει έξοδος από τη διεργασία που εκτελείται το shell.
-- createalias/ destroyalias, ώστε να ενημερώνεται ο vector της διεργασίας που εκτελείται το shell. 
-- Ευρευσή των alias στην εντολή εκτέλεσης. Να σημειωθεί ότι πρώτα εκετελείται η εντολή destroyalias και μετά η αντικατάσταση των alias στην εντολή.
-- myHistory i, εδώ γίνεται ο εντοπισμός της i-στης εντολής, ώστε μετά να μπορεί να προστεθεί στο ιστορικό.
+The function mysh_loop() iteratively reads the user's commands, interprets them, and either executes them or creates a copy of the current process and assigns the command to the main_execution() function for execution. This iteration stops when the user issues the exit command.
+The commands executed are
+- exit, to exit from the process running the shell.
+- createalias/destroyalias, to update the vector of the process running the shell. 
+- Finding alias in the run command. Note that the destroyalias command is executed first and then the alias replacement in the command.
+- myHistory i, here the i-th command is located, so that it can then be added to the history.
 - cd path & cd .. & cd wildcard
-- Ενημέρωση του ιστορικού, ώστε να ενημερώνεται ο vector της διεργασίας που εκτελείται το shell.
+- Update the history, so that the vector of the process running the shell is updated.
 
 Parser:
-Το προγραμμά λαμβάνει μία εντολή από το χρήστη με τη getline. 
-Έπειτα, χωρίζει τη γραμμή σε εντολές με τη χρήση της strtok και με delimiter to ;
-Στη συνέχεια, χωρίζει την κάθε εντολή σε tokens, με τη χρήση stringstream, και την εκτελεί. Οι υποσυμβολοσειρές μεσά σε " " (προσοχή, όχι σε “ ”) ερμηνεύονται ως ενα token και αποθηκεύονται χωρίς τα " ".
+The program receives a command from the user with getline(). 
+Then, it splits the line into commands using strtok() and delimiter to ?
+It then splits each command into tokens, using stringstream, and executes it. Substrings between " " (note, not " ") are interpreted as a token and stored without " ".
 
 Signals: 
-Στην διεργασία που φιλοξενεί στο shell, εφαρμόζεται SIG_IGN για τα σήματα control-C και control-Ζ, ενώ όταν γίνεται fork, στη διεργασία παιδί στην οποία εκτελούνται οι εντολές εφαρμόζεται SIG_DFL ώστε σε αυτές να μπορέσουν να εφαρμοστπύν τα σήματα.
+In the host process in the shell, SIG_IGN is applied to the control-C and control-Z signals, while when forking, SIG_DFL is applied to the child process in which the instructions are executed so that the signals can be applied to them.
 
 # main_execution() #
-Η συνάρτηση αυτή ελέγει αν η εντολή που δώθηκε 
-- είτε πρέπει να εκτελεστεί στο backround, είτε περιέχει κάποια ανακατεύθυνση, είτε περιέχει κάποιο pipe, είτε περιέχει συμβολοσειρά με wild characters που τοτέ τις προωθεί στις κατάλληλες συναρτήσεις χειρισμού, 
-- είτε ελέγχει αν είναι η εντολή myHistory, που σε αυτή τη περίπτωση την εκτελεί, 
-- είτε ελέγχει αν είναι εντολή aliasing, που σε αυτή τη περίπτωση την αγνοεί.
-Σε όλες τις περιπτώσεις αυτές η συνάρτηση αυτή επιστρέφει 0.
-Στη περίπτωση που δωθεί ως όρισμα μια απλή εντολή εκτέλεσης, η συνάτηση επιστρέφει 1, ώστε η συνάρτηση που την κάλεσε να επιλέξει αν θέλει να την εκτελέσει κάνοντας fork (συνάρτηση execute), ή χωρίς (συνάρτηση execute_without_fork).
+This function checks if the command given 
+- either needs to be executed in the backround, or contains a redirect, or contains a pipe, or contains a string of wild characters which it then forwards to the appropriate handler functions, 
+- or checks if it's myHistory, which in this case executes it, 
+- or checks if it is an aliasing command, in which case it ignores it.
+In all such cases this function returns 0.
+In the case where a simple execute command is given as an argument, the syntax returns 1, so that the calling function can choose whether to execute it with fork (execute function), or without (execute_without_fork function).
 
-Η συνάρτηση αυτή δε χρησιμοποιείται μόνο από τη mysh_loop, αλλά και από τις συναρτήσεις execute_bg, redirection_output, redirection_output_double, redirection_input, handle_pipes για να χειριστούν τις υποεντολές που περιέχουν οι εντολές που έλαβαν ως όρισμα.
+This function is not only used by mysh_loop(), but also by the execute_bg(), redirection_output(), redirection_output_double(), redirection_input(), handle_pipes() functions to handle the subcommands contained in the commands they received as arguments.
 
 # Ανακατεύθυνση #
-- Ανακατεύθυνση εισόδου  
-Υλοποιείται με τη συνάρτηση redirection_input, η οποία 
-    - ανοίγει το ζητούμενο αρχείο μόνο για ανάγνωση
-    - αποθηκεύει το STDIN_FILENO για να το επαναφέρει αργότερα
-    - ανακατευθύνει το input στο ζητούμενο αρχείο
-    - εκτελεί τις ενέργειες που πρέπει να εκτελεστούν με βάση το κομμάτι της εντολής που δεν    περιέχει ανακατεύθυνση. Στη περίπτωση απλής εντολής επιλέγεται εκτέλεση με fork, διότι δεν γίνεται fork κάπου αλλού στο πλαίσιο της συγκεκριμένης εντολής
-    - επαναφέρει το STDIN_FILENO στο input
-    - κλείνει το αρχείο
+- Redirection of entry  
+It is implemented with the redirection_input function, which 
+    - opens the requested file for reading only
+    - stores STDIN_FILENO to restore it later
+    - redirects the input to the requested file
+    - performs the actions to be performed based on the part of the command that does not contain redirection. In the case of a simple command, execution with fork is chosen, because no fork is performed elsewhere in the context of that command
+    - restores STDIN_FILENO to the input
+    - closes the file
+    
+- Redirection of exit 
+It is implemented with the redirection_output function, which 
+    - opens the requested file for writing, without append
+    - saves STDOUT_FILENO to restore it later
+    - redirects the output to the requested file
+    - performs the actions to be performed based on the part of the command that does not contain redirection. In the case of a simple command, execution with fork is chosen, because no fork is performed elsewhere within that command
+    - restores STDOUT_FILENO to the output
+    - closes the file
 
-- Ανακατεύθυνση εξόδου 
-Υλοποιείται με τη συνάρτηση redirection_output, η οποία 
-    - ανοίγει το ζητούμενο αρχείο για γράψιμο, χωρίς append
-    - αποθηκεύει το STDOUT_FILENO για να το επαναφέρει αργότερα
-    - ανακατευθύνει το output στο ζητούμενο αρχείο
-    - εκτελεί τις ενέργειες που πρέπει να εκτελεστούν με βάση το κομμάτι της εντολής που δεν    περιέχει ανακατεύθυνση. Στη περίπτωση απλής εντολής επιλέγεται εκτέλεση με fork, διότι δεν γίνεται fork κάπου αλλού στο πλαίσιο της συγκεκριμένης εντολής
-    - επαναφέρει το STDOUT_FILENO στο output
-    - κλείνει το αρχείο
+- Redirect the output of an addition to an existing file
+It is implemented with the redirection_output_double function, which 
+    - opens the requested file for writing, with append
+    - saves STDOUT_FILENO to be restored later
+    - redirects the output to the requested file
+    - performs the actions to be performed based on the part of the command that does not contain redirection. In the case of a simple command, execution with fork is chosen, because no fork is performed elsewhere within that command
+    - restores STDOUT_FILENO to the output
+    - closes the file
 
-- Ανακατεύθυνση εξόδου προσθήκης σε υπάρχον αρχείο
-Υλοποιείται με τη συνάρτηση redirection_output_double, η οποία 
-    - ανοίγει το ζητούμενο αρχείο για γράψιμο, με append
-    - αποθηκεύει το STDOUT_FILENO για να το επαναφέρει αργότερα
-    - ανακατευθύνει το output στο ζητούμενο αρχείο
-    - εκτελεί τις ενέργειες που πρέπει να εκτελεστούν με βάση το κομμάτι της εντολής που δεν    περιέχει ανακατεύθυνση. Στη περίπτωση απλής εντολής επιλέγεται εκτέλεση με fork, διότι δεν γίνεται fork κάπου αλλού στο πλαίσιο της συγκεκριμένης εντολής
-    - επαναφέρει το STDOUT_FILENO στο output
-    - κλείνει το αρχείο
-
-# Σωλήνωση #
-Υλοποιείται με τη συνάρτηση handle_pipes, η οποία: 
-- εντοπίζει την πρώτη | απότα αριστερά στην εντολή που δώθηκε και χωρίζει την εντολή σε 2 εντολές με βάση αυτή
-- ξεκινάει την υλοποίηση του pipe με τις εντολές int fd[2]; pipe(fd);
-- στη συνέχεια, εκτελεί ένα fork 
-- στη διεργασία παιδί , ανατίτεθαι το input του pipe, κλείνουν τα άκρα του pipe που δε χρειάζονται και εκτελείται η "αριστερή" εντολή
-- στη διεργασία γονίος εκτελεί άλλο ένα fork 
-- στη νέα διεργασία παιδί, ανατίτεθαι το  output του pipe, κλείνουν τα άκρα του pipe που δε χρειάζονται και εκτελείται η "δεξία" εντολή
-- τέλος, στη διεργασία γονιός κλείνει τα άκρα του pipe και περιμένει τις διεργασίες παιδιά να ολοκληρωθούν.
-Στη περίπτωση απλής εντολής επιλέγεται εκτέλεση χωρίς fork, διότι γίνεται fork νωρίτερα.
+# Pipes #
+It is implemented with the handle_pipes function, which: 
+- finds the first | from the left in the given command and splits the command into 2 commands based on it
+- starts the implementation of the pipe with the commands int fd[2]; pipe(fd);;
+- then executes a fork 
+- in the child process , retrieve the input of the pipe, close the ends of the pipe that are not needed and execute the "left" instruction
+- in the parent process, it performs another fork 
+- in the new child process, the output of the pipe is rolled back, the unneeded ends of the pipe are closed and the 'right' command is executed
+- finally, the parent process closes the ends of the pipe and waits for the child processes to complete.
+In the case of a simple instruction, execution without fork is chosen because it is forked earlier.
 
 # Background #
-Υλοποιείται με τη συνάρτηση execute_bg, η οποία λαμβάνει την εντολή από τη main_execution χωρίς το &. Μοιάζει αρκετά την την συνάρτηση απλής εκτέλεσης με fork, αλλά έχει τις εξής διαφορές: 
-- η διεργασία γονίος δεν περιμένει τη διεργασία παιδί να ολοκληρωθεί
-- δημιουργείται ένα νέο session και process group για τη διεργασία παιδί
-- δεν εκτελεί μόνο απλές εντολές (main_execution)
+It is implemented with the execute_bg() function, which receives the command from main_execution() without the &. It is quite similar to the simple fork execution function, but has the following differences: 
+- the parent process does not wait for the child process to complete
+- a new session and process group is created for the child process.
+- it does not only execute simple commands (main_execution)
 
 # wild characters #
-Υλοποιείται με τις συνάρτησεις
-- handle_wildcards, η οποία βρίσκει πόσα αρχεία ταιριάζουν με το μοτιβό που δώθηκε και με τη συνάρτηση, η οποία χρησιμοποεί την βιβλιοθήκη glob.h
-- exec_wildcards, η οποία για κάθε αποτέλεσμα της handle_wildcards, εκτελεί την εντολή που πρέπει να εκτελεστεί. Επιπλέον, χειρίζεται την ειδική περιπτωσή της εντολής cd wildcard, διότι απαιτεί η αναζήτηση για αντιστοιχίες να γίνει στους φακέλους του τρέχοντος φακέλου και όχι στα αρχεία. Αν βρεθεί ακριβώς μια αντιστοιχία, τότε εκτελείται η εντολή cd αντιστοιχία, αλλιώς εκτυπώνεται μήνυμα λάθους.
+Implemented with the functions
+- handle_wildcards(), which finds how many files match the given pattern and the function, which uses the glob.h library
+- exec_wildcards(), which for each result of handle_wildcards(), executes the command to be executed. In addition, it handles the special case of the cd wildcard command, because it requires the search for matches to be done in the folders of the current folder rather than in the files. If exactly one match is found, then the cd match command is executed, otherwise an error message is printed.
 
 # Αliases #
-Για την αποθήκευση των aliases χρησιμοποιώ ένα map, τον οποίο ενημερώνω στην διεργασία που φιλοξενεί στο shell. Επιπλέον, επιλέγω να κάνω τις απαραίτητες αντικαταστάσεις στις εντολές που δίνονται από το χρήστη στην διεργασία που φιλοξενεί στο shell.
+To store the aliases I use a map, which I update in the host process in the shell. In addition, I choose to make the necessary substitutions in the commands given by the user to the hosting process in the shell.
 
 # Διαχείριση Σημάτων #
-Στην διεργασία που φιλοξενεί στο shell, εφαρμόζεται SIG_IGN για τα σήματα control-C και control-Ζ, ενώ όταν γίνεται fork, στη διεργασία παιδί στην οποία εκτελούνται οι εντολές εφαρμόζεται SIG_DFL ώστε σε αυτές να μπορέσουν να εφαρμοστπύν τα σήματα.
+In the host process in the shell, SIG_IGN is applied to the control-C and control-Z signals, while when forking, SIG_DFL is applied to the child process in which the instructions are executed so that the signals can be applied to them.
 
 # myHistory #
-- Για την αποθήκευση του history χρησιμοποιώ ένα vector, τον οποίο ενημερώνω στην διεργασία που φιλοξενεί στο shell. 
-- Η εντολή myHistory υλοποιείται από τη διεργασία παιδί. Όταν εκτελέσουμε την συγκεκριμένη εντολή, δεν προσθέτω κάποια εντολή στο history.
-- Η ερμηνεία της εντολής myHistory i, γίνεται στη διεργασία γονίος, ώστε μετά να μπορεί να προστεθεί στο ιστορικό. Ενώ, η εκτέλεση της γίνεται στο σημείο που θα έπρεπε να εκτελεστεί η συγκεκριμένη εντολή με βάση τα παραπάνω. 
+- To store the history I use a vector, which I update in the host process in the shell. 
+- The myHistory command is implemented by the child process. When we execute this command, I do not add any command to the history.
+- The interpretation of the myHistory i command, is done in the parent process, so that it can then be added to the history. Whereas, its execution is done at the point where this command should be executed based on the above. 
 
 # execute & execute_without_fork #
-Για εκτέλεση απλών εντολών του συστήματος (εξαιρούνται οι cd, exit πχ ls) μπορεί να χρησιμοποιηθεί είτε η συνάρτηση execute για εκτέλεση σε θηγατρική διεργασία, είτε η συνάρτηση execute_without_fork για εκτέλεση στην ίδια διεργασία.
+To execute simple system commands (excluding cd, exit e.g. ls), either the execute() function can be used to execute on a native process, or the execute_without_fork() function can be used to execute on the same process.
