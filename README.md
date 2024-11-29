@@ -1,5 +1,5 @@
 # Project Preview #
-This project was developed as part of the System Programming Κ24 course in the Department of Informatics and Telecommunications at the University of Athens. It received a perfect score of 100/100.
+This project was developed as part of the System Programming K24 course in the Department of Informatics and Telecommunications at the University of Athens. It received a perfect score of 100/100.
 
 # Compile and execute #
 To compile the program run the command: make.
@@ -96,12 +96,12 @@ It is implemented with the execute_bg() function, which receives the command fro
 - a new session and process group is created for the child process.
 - it does not only execute simple commands (main_execution)
 
-# wild characters #
+# Wild Characters #
 Implemented with the functions
 - handle_wildcards(), which finds how many files match the given pattern and the function, which uses the glob.h library
 - exec_wildcards(), which for each result of handle_wildcards(), executes the command to be executed. In addition, it handles the special case of the cd wildcard command, because it requires the search for matches to be done in the folders of the current folder rather than in the files. If exactly one match is found, then the cd match command is executed, otherwise an error message is printed.
 
-# Αliases #
+# Aliases #
 To store the aliases I use a map, which I update in the host process in the shell. In addition, I choose to make the necessary substitutions in the commands given by the user to the hosting process in the shell.
 
 # Signal Handling #
