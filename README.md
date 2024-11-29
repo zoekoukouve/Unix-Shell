@@ -1,7 +1,7 @@
 # Project Preview #
 This project was developed as part of the System Programming K24 course in the Department of Informatics and Telecommunications at the University of Athens. It received a perfect score of 100/100.
 
-# Compile and execute #
+# Compile and Execute #
 To compile the program run the command: make.
 To execute the program, run the command: ./main
 
