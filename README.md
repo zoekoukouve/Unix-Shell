@@ -1,5 +1,6 @@
 # Note #
-The following project was completed as part of the System Programming Κ24 course at the Department of Informatics and Telecommunications at the University of Athens and was graded 100/100.
+This project was developed as part of the System Programming Κ24 course in the Department of Informatics and Telecommunications at the University of Athens. It received a perfect score of 100/100.
+
 # Compile and execute #
 To compile the program run the command: make.
 To compile the program, run the command: ./main
